@@ -4,7 +4,7 @@ import java.util.Random;
 import java.util.concurrent.Semaphore;
 
 public class givenomnoms {
-    static final int NUM_CUSTOMERS = 10;
+    static final int NUM_CUSTOMERS = 20;
     public static int customerCounter = NUM_CUSTOMERS;
     public static final Object printlock = new Object();
     // Semaphores for only one customer to be allowed through a door at a time
@@ -181,11 +181,11 @@ public class givenomnoms {
                     int backupLineLength = checkLineLength(backup);
                     //safePrint("The line for table " + primary + " is long. Customer " + customer_id + " will check the line for table " + backup);
                     if (backupLineLength < 7){
-                        safePrint("The line for  " + customerToString() + "'s backup choice is shorter.");
+                        //safePrint("The line for  " + customerToString() + "'s backup choice is shorter.");
                         joinTheLine(backup);
                     }
                     else { //if both lines are long, the customer will go with their first choice
-                        //safePrint("The line for Customer " + customer_id + "'s backup choice is also long. They will wait for table " + primary);
+                       // safePrint("The line for Customer " + customer_id + "'s backup choice is also long. They will wait for table " + primary);
                         joinTheLine(primary);
                     }
                 }
@@ -352,8 +352,6 @@ public class givenomnoms {
                     doorTwoSemaphore.release();
                 }
             }
-
-
         }
 
         public static void safePrint(String line){
@@ -361,10 +359,5 @@ public class givenomnoms {
                 System.out.println(line);
             }
         }
-
-
-
-
-
     }
 }
