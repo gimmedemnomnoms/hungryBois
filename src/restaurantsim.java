@@ -3,14 +3,18 @@ import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
 
-public class givenomnoms {
-    static final int NUM_CUSTOMERS = 20;
+public class restaurantsim {
+    static final int NUM_CUSTOMERS = 40;
     public static int customerCounter = NUM_CUSTOMERS;
     public static final Object printlock = new Object();
-    // Semaphores for only one customer to be allowed through a door at a time
-    public static Semaphore doorSemaphore = new Semaphore(2);
-    public static Semaphore doorOneSemaphore = new Semaphore(1);
-    public static Semaphore doorTwoSemaphore = new Semaphore(1);
+    //Queues to hold how many customers are in each line
+    public static Queue<createdThread> tableALine = new LinkedList<>();
+    public static Queue<createdThread> tableBLine = new LinkedList<>();
+    public static Queue<createdThread> tableCLine = new LinkedList<>();
+
+    public static Semaphore doorSemaphore = new Semaphore(2); //allows 2 to simulate 2 doors each allowing 1 person
+    public static Semaphore lineSemaphore = new Semaphore(1);
+
     // Semaphores for each table to limit only 4 customers seated at a time
     public static Semaphore tableOneSemaphore = new Semaphore(4);
     public static Semaphore tableTwoSemaphore = new Semaphore(4);
@@ -62,9 +66,7 @@ public class givenomnoms {
         char [] tableChoice = new char[2]; //holds customer's first choice and backup if they have one
         char inLineFor;
         boolean has_backup;
-        public Queue<createdThread> tableALine = new LinkedList<>();
-        public Queue<createdThread> tableBLine = new LinkedList<>();
-        public Queue<createdThread> tableCLine = new LinkedList<>();
+
         public Random randomTime = new Random();
 
 
@@ -95,21 +97,17 @@ public class givenomnoms {
 
             if (isCustomer) {
                 try {
-                    //safePrint(customerToString() + " wants to enter the restaurant");
-                    //useDoor("enters");
                     enterRestaurant();
                     determineLine();
                     waitToSit();
                     orderFood();
                     customerEats();
-                    //Thread.sleep(randomTime.nextInt(800) + 200); //time for customer to eat their food
                     finishAndPay();
                     exitRestaurant();
-                    //useDoor("exits");
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-            } if (customerCounter == 0){
+            } if (customerCounter == 0){ //checks if the customer count is 0 so waiters will leave
                 try {
                     waitersLeave();
                 } catch (InterruptedException e) {
@@ -148,8 +146,7 @@ public class givenomnoms {
                 } else if (backup_opt == 1) {
                     this.tableChoice[1] = 'C';
                 } else {
-                    safePrint("Error: How did you get here?");
-                }
+                    safePrint("Error: chooseBackup (seafood)");                }
             }
             else if (primary == 'B'){ //if primary is steak, backup will be seafood or pasta
                 if (backup_opt == 0) {
@@ -157,8 +154,7 @@ public class givenomnoms {
                 } else if (backup_opt == 1) {
                     this.tableChoice[1] = 'C';
                 } else {
-                    safePrint("Error: How did you get here?");
-                }
+                    safePrint("Error: chooseBackup (steak)");                }
             }
             else{ //if primary is pasta, backup will be steak or seafood
                 if (backup_opt == 0) {
@@ -166,12 +162,13 @@ public class givenomnoms {
                 } else if (backup_opt == 1) {
                     this.tableChoice[1] = 'A';
                 } else {
-                    safePrint("Error: How did you get here?");
+                    safePrint("Error: chooseBackup (pasta)");
                 }
             }
         }
 
         public void determineLine() throws InterruptedException {
+            lineSemaphore.acquire();
             char primary = tableChoice[0];
             if (!has_backup){
                 safePrint(customerToString() + " stands in line for table " + primary);
@@ -188,7 +185,7 @@ public class givenomnoms {
                     int backupLineLength = checkLineLength(backup);
                    safePrint(customerToString() + "'s first choice has a long line");
                     if (backupLineLength < 7){
-                        safePrint(customerToString() + "'s backup choice does not have a long line\n" + customerToString() + " stands in line for table " + backup);
+                        safePrint(customerToString() + "'s backup choice does not have a long line\n" + customerToString() +  " stands in line for table " + backup);
                         joinTheLine(backup);
                     }
                     else { //if both lines are long, the customer will go with their first choice
@@ -211,54 +208,49 @@ public class givenomnoms {
                 return tableCLine.size();
             }
             else{
-                safePrint("Go away");
+                safePrint("Error: checkLineLength");
                 return 1000;
             }
         }
-        public void joinTheLine(char option) throws InterruptedException { //adds customer to chosen line
-            //getInLineSemaphore.acquire();
+        public void joinTheLine(char option){ //adds customer to chosen line
             if(option== 'A'){
                 tableALine.add(this);
-                //safePrint(customerToString() + " is in line for Seafood");
             }
             else if (option == 'B'){
                 tableBLine.add(this);
-                //safePrint(customerToString() + " is in line for Steak");
             }
             else if (option == 'C'){
                 tableCLine.add(this);
-                //safePrint(customerToString() + " is in line for Pasta");
-
             }
             else {
-                safePrint("Halt!");
+                safePrint("Error: joinTheLine");
             }
             inLineFor = option;
-            //getInLineSemaphore.release();
+            lineSemaphore.release();
         }
         public void waitToSit() throws InterruptedException {
-            //ensures only one customer leaves the line and is seated at a time
-            //beSeatedSemaphore.acquire();
             try { //customer waits for one of four spots at their desired table
                 if (inLineFor == 'A'){
                     tableOneSemaphore.acquire();
                     aCounter++;
-                    safePrint(customerToString() + " is sitting at table A\tTable A count: " + aCounter);
+                    tableALine.remove(this);
+                    safePrint(customerToString() + " is sitting at table A");
                 }
                 else if (inLineFor == 'B'){
                     tableTwoSemaphore.acquire();
                     bCounter++;
-                    safePrint(customerToString() + " is sitting at table B\tTable B count: " + bCounter);
+                    tableBLine.remove(this);
+                    safePrint(customerToString() + " is sitting at table B");
                 }
                 else if (inLineFor == 'C'){
                     tableThreeSemaphore.acquire();
                     cCounter++;
-                    safePrint(customerToString() + " is sitting at table C\t table C count: " + cCounter);
+                    tableCLine.remove(this);
+                    safePrint(customerToString() + " is sitting at table C");
                 }
                 else {
-                    safePrint("Get outta here");
+                    safePrint("Error: waitToSit");
                 }
-                //beSeatedSemaphore.release();
 
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -316,64 +308,43 @@ public class givenomnoms {
             if (inLineFor == 'A'){
                 aCounter--;
                 tableOneSemaphore.release();
-
             }
             else if (inLineFor == 'B'){
                 bCounter--;
                 tableTwoSemaphore.release();
-
             }
             else if (inLineFor == 'C'){
                 cCounter--;
                 tableThreeSemaphore.release();
-
             }
             else {
-                safePrint("I don't think you should be here");
+                safePrint("Error: finishAndPay");
             }
             cashierSemaphore.acquire(); //only one customer may pay at a time
             safePrint(customerToString() + " pays");
             cashierSemaphore.release();
         }
-        public void enterRestaurant() throws InterruptedException {
+        public void enterRestaurant() throws InterruptedException { //controls two doors, each allowing one customer at a time
             safePrint(customerToString() + " wants to enter the restaurant");
             doorSemaphore.acquire();
             safePrint(customerToString() + " enters the restaurant");
             doorSemaphore.release();
         }
-        public void exitRestaurant() throws InterruptedException {
+        public void exitRestaurant() throws InterruptedException {//controls two doors, each allowing one customer at a time
             doorSemaphore.acquire();
             safePrint(customerToString() + " is leaving the restaurant");
             doorSemaphore.release();
             safePrint(customerToString() + " has left the restaurant");
             customerCounter--;
         }
-        public void useDoor(String direction) throws InterruptedException {
-            Random door = new Random();
-            int chosen_door = door.nextInt(2); //randomly choose between 2 doors
-            if (chosen_door == 0) {
-                doorOneSemaphore.acquire();
-                safePrint(customerToString() + " " + direction + " through door 1");
-                doorOneSemaphore.release();
-            } else {
-                doorTwoSemaphore.acquire();
-                safePrint(customerToString() + " " + direction + " through door 2");
-                doorTwoSemaphore.release();
-            }
-            if (direction == "exits"){ //if a customer exits, decrement the customer counter to control when waiters leave
-                customerCounter--;
-                //safePrint(customerCounter + " customers are remaining");
-            }
-        }
         public void waitersLeave() throws InterruptedException {
             for (int i = 0; i < waiter.length; i++) {
-                    doorOneSemaphore.acquire();
+                    doorSemaphore.acquire();
                     safePrint("Waiter " + waiter[i].waiterId + " cleans the table and leaves the restaurant");
-                    doorOneSemaphore.release();
+                    doorSemaphore.release();
             }
         }
-
-        public static void safePrint(String line){
+        public static void safePrint(String line){ //thread safe printing
             synchronized (printlock){
                 System.out.println(line);
             }
