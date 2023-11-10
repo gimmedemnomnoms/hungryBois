@@ -4,15 +4,13 @@ import java.util.Random;
 import java.util.concurrent.Semaphore;
 
 public class givenomnoms {
-    static final int NUM_CUSTOMERS = 20;
+    static final int NUM_CUSTOMERS = 40;
     public static int customerCounter = NUM_CUSTOMERS;
     public static final Object printlock = new Object();
     // Semaphores for only one customer to be allowed through a door at a time
     public static Semaphore doorOneSemaphore = new Semaphore(1);
     public static Semaphore doorTwoSemaphore = new Semaphore(1);
     // Semaphores for each table to limit only 4 customers seated at a time
-    public static Semaphore getInLineSemaphore = new Semaphore(1);
-    public static Semaphore beSeatedSemaphore = new Semaphore(1);
     public static Semaphore tableOneSemaphore = new Semaphore(4);
     public static Semaphore tableTwoSemaphore = new Semaphore(4);
     public static Semaphore tableThreeSemaphore = new Semaphore(4);
@@ -165,7 +163,7 @@ public class givenomnoms {
             }
         }
 
-        public void determineLine() {
+        public void determineLine() throws InterruptedException {
             char primary = tableChoice[0];
             if (!has_backup){
                 joinTheLine(primary);
@@ -208,7 +206,8 @@ public class givenomnoms {
                 return 1000;
             }
         }
-        public void joinTheLine(char option){ //adds customer to chosen line
+        public void joinTheLine(char option) throws InterruptedException { //adds customer to chosen line
+            //getInLineSemaphore.acquire();
             if(option== 'A'){
                 tableALine.add(this);
                 safePrint(customerToString() + " is in line for Seafood");
@@ -226,11 +225,11 @@ public class givenomnoms {
                 safePrint("Halt!");
             }
             inLineFor = option;
-            getInLineSemaphore.release();
+            //getInLineSemaphore.release();
         }
         public void waitToSit() throws InterruptedException {
             //ensures only one customer leaves the line and is seated at a time
-            beSeatedSemaphore.acquire();
+            //beSeatedSemaphore.acquire();
             try { //customer waits for one of four spots at their desired table
                 if (inLineFor == 'A'){
                     tableOneSemaphore.acquire();
@@ -250,7 +249,7 @@ public class givenomnoms {
                 else {
                     safePrint("Get outta here");
                 }
-                beSeatedSemaphore.release();
+                //beSeatedSemaphore.release();
 
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -281,15 +280,15 @@ public class givenomnoms {
         public void takeOrder(int customer_id, char waiterId) throws InterruptedException {
                 this.customer_id = customer_id;
                 kitchenSemaphore.acquire(); //acquires semaphore to be allowed in the kitchen
-                safePrint("Waiter "+ waiterId + " is in the kitchen to drop of Customer " + customer_id + "'s order");
+                //safePrint("Waiter "+ waiterId + " is in the kitchen to drop of Customer " + customer_id + "'s order");
                 Thread.sleep(randomTime.nextInt(400) + 100); //time spent in the kitchen delivering the order
-                safePrint("Waiter " + waiterId + " has left the kitchen");
+                //safePrint("Waiter " + waiterId + " has left the kitchen");
                 kitchenSemaphore.release();
                 Thread.sleep(randomTime.nextInt(700) + 300); //time spent waiting outside the kitchen for the order to be ready
                 kitchenSemaphore.acquire();
-                safePrint("Waiter " + waiterId + " enters the kitchen to pick up customer " + customer_id + "'s order");
+                //safePrint("Waiter " + waiterId + " enters the kitchen to pick up customer " + customer_id + "'s order");
                 Thread.sleep(randomTime.nextInt(400) + 100); //time spent in kitchen retrieving the order
-                safePrint("Waiter " + waiterId + " leaves the kitchen with customer " + customer_id + "'s order");
+                //safePrint("Waiter " + waiterId + " leaves the kitchen with customer " + customer_id + "'s order");
                 kitchenSemaphore.release();
                 safePrint("Waiter " + waiterId + " brings customer " + customer_id + " their food");
 
@@ -316,9 +315,9 @@ public class givenomnoms {
                 safePrint("I don't think you should be here");
             }
             cashierSemaphore.acquire(); //only one customer may pay at a time
-            safePrint(customerToString() + " is now at the counter paying");
+            //safePrint(customerToString() + " is now at the counter paying");
             cashierSemaphore.release();
-            safePrint(customerToString() + " has finished paying and will now leave the restaurant");
+            //safePrint(customerToString() + " has finished paying and will now leave the restaurant");
         }
 
         public void useDoor(String direction) throws InterruptedException {
@@ -335,7 +334,7 @@ public class givenomnoms {
             }
             if (direction == "exits"){ //if a customer exits, decrement the customer counter to control when waiters leave
                 customerCounter--;
-                safePrint(customerCounter + " customers are remaining");
+                //safePrint(customerCounter + " customers are remaining");
             }
         }
         public void waitersLeave() throws InterruptedException {
