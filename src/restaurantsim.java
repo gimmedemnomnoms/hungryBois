@@ -11,7 +11,6 @@ public class restaurantsim {
     public static Queue<createdThread> tableALine = new LinkedList<>();
     public static Queue<createdThread> tableBLine = new LinkedList<>();
     public static Queue<createdThread> tableCLine = new LinkedList<>();
-
     public static Semaphore doorSemaphore = new Semaphore(2); //allows 2 to simulate 2 doors each allowing 1 person
     public static Semaphore lineSemaphore = new Semaphore(1);
 
@@ -19,20 +18,14 @@ public class restaurantsim {
     public static Semaphore tableOneSemaphore = new Semaphore(4);
     public static Semaphore tableTwoSemaphore = new Semaphore(4);
     public static Semaphore tableThreeSemaphore = new Semaphore(4);
-
     // Semaphore for only one waiter to be allowed in the kitchen at a time
     public static Semaphore kitchenSemaphore = new Semaphore(1);
-
     // Semaphore to call each waiter, so that only one customer can interact at a time
     public static Semaphore waiterOneSemaphore = new Semaphore(1);
     public static Semaphore waiterTwoSemaphore = new Semaphore(1);
     public static Semaphore waiterThreeSemaphore = new Semaphore(1);
-
     // Semaphore to pay bill at cashier
     public static Semaphore cashierSemaphore = new Semaphore(1);
-
-    // counters for testing purposes, ensures only 4 customer per table at a time
-    public static int aCounter, bCounter, cCounter;
     public static createdThread [] waiter = new createdThread[3];
     public static createdThread [] customer = new createdThread[NUM_CUSTOMERS];
 
@@ -52,10 +45,6 @@ public class restaurantsim {
         }
     }
     public static class createdThread extends Thread{
-        public String waiterToString() {
-            return "Waiter " + waiterId;
-        }
-
         public String customerToString() {
             return "Customer " + customer_id;
         }
@@ -64,11 +53,9 @@ public class restaurantsim {
         int customer_id;
         char waiterId;
         char [] tableChoice = new char[2]; //holds customer's first choice and backup if they have one
-        char inLineFor;
+        char inLineFor; //holds which line the customer chooses
         boolean has_backup;
-
         public Random randomTime = new Random();
-
 
         public createdThread(int customerId){ //constructor for customer threads
             this.customer_id = customerId;
@@ -79,23 +66,23 @@ public class restaurantsim {
             int decide = rand.nextInt(2);
             if (decide == 1) {
                 has_backup = true;
-            } else if (decide == 0) {
+            }
+            else {
                 has_backup = false;
             }
             chooseFoodChoice();
-
         }
         public createdThread(char waiterId){ //constructor for waiter threads
             this.waiterId = waiterId;
             isWaiter = true;
             isCustomer = false;
         }
-        public void run(){
-            if (isWaiter) {
-                safePrint(waiterToString() + " is running");
-            }
 
-            if (isCustomer) {
+        public void run(){
+            if (isWaiter) { //run waiter threads
+                safePrint("Waiter " + waiterId + " is running");
+            }
+            if (isCustomer) { //run customer threads
                 try {
                     enterRestaurant();
                     determineLine();
@@ -104,22 +91,24 @@ public class restaurantsim {
                     customerEats();
                     finishAndPay();
                     exitRestaurant();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
                 }
-            } if (customerCounter == 0){ //checks if the customer count is 0 so waiters will leave
-                try {
-                    waitersLeave();
-                } catch (InterruptedException e) {
+                catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             }
-
+            if (customerCounter == 0){ //checks if the customer count is 0 so waiters will leave
+                try {
+                    waitersLeave();
+                }
+                catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
         public void chooseFoodChoice(){ //randomly selects a customer's food choice
             Random rand = new Random();
             int primary = rand.nextInt(3);
-            if(primary == 0){
+            if (primary == 0){
                 this.tableChoice[0] = 'A';
                 safePrint(customerToString() + " wants to eat seafood");
             }
@@ -143,26 +132,25 @@ public class restaurantsim {
             if (primary == 'A'){ //if primary is seafood, backup will be steak or pasta
                 if (backup_opt == 0) {
                     this.tableChoice[1] = 'B';
-                } else if (backup_opt == 1) {
+                }
+                else {
                     this.tableChoice[1] = 'C';
-                } else {
-                    safePrint("Error: chooseBackup (seafood)");                }
+                }
             }
             else if (primary == 'B'){ //if primary is steak, backup will be seafood or pasta
                 if (backup_opt == 0) {
                     this.tableChoice[1] = 'A';
-                } else if (backup_opt == 1) {
+                }
+                else {
                     this.tableChoice[1] = 'C';
-                } else {
-                    safePrint("Error: chooseBackup (steak)");                }
+                }
             }
-            else{ //if primary is pasta, backup will be steak or seafood
+            else { //if primary is pasta, backup will be steak or seafood
                 if (backup_opt == 0) {
                     this.tableChoice[1] = 'B';
-                } else if (backup_opt == 1) {
+                }
+                else {
                     this.tableChoice[1] = 'A';
-                } else {
-                    safePrint("Error: chooseBackup (pasta)");
                 }
             }
         }
@@ -193,7 +181,6 @@ public class restaurantsim {
                         joinTheLine(primary);
                     }
                 }
-
             }
         }
 
@@ -232,27 +219,24 @@ public class restaurantsim {
             try { //customer waits for one of four spots at their desired table
                 if (inLineFor == 'A'){
                     tableOneSemaphore.acquire();
-                    aCounter++;
                     tableALine.remove(this);
                     safePrint(customerToString() + " is sitting at table A");
                 }
                 else if (inLineFor == 'B'){
                     tableTwoSemaphore.acquire();
-                    bCounter++;
                     tableBLine.remove(this);
                     safePrint(customerToString() + " is sitting at table B");
                 }
                 else if (inLineFor == 'C'){
                     tableThreeSemaphore.acquire();
-                    cCounter++;
                     tableCLine.remove(this);
                     safePrint(customerToString() + " is sitting at table C");
                 }
                 else {
                     safePrint("Error: waitToSit");
                 }
-
-            } catch (InterruptedException e) {
+            }
+            catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -277,7 +261,6 @@ public class restaurantsim {
                 takeOrder(customer_id, table);
                 waiterThreeSemaphore.release();
             }
-
         }
         public void takeOrder(int customer_id, char waiterId) throws InterruptedException {
                 this.customer_id = customer_id;
@@ -300,21 +283,17 @@ public class restaurantsim {
             safePrint(customerToString() + " eats");
             Thread.sleep(randomTime.nextInt(800) + 200); //time for customer to eat their food
             safePrint(customerToString() + " is done eating");
-
         }
         public void finishAndPay() throws InterruptedException {
             safePrint(customerToString() + " leaves the table and goes to pay");
             //release the table semaphore to allow a new customer to be seated
             if (inLineFor == 'A'){
-                aCounter--;
                 tableOneSemaphore.release();
             }
             else if (inLineFor == 'B'){
-                bCounter--;
                 tableTwoSemaphore.release();
             }
             else if (inLineFor == 'C'){
-                cCounter--;
                 tableThreeSemaphore.release();
             }
             else {
